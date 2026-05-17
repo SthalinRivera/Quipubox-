@@ -1,0 +1,142 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model cliente_sede {
+  id_cliente_sede BigInt         @id @default(autoincrement())
+  id_cliente      BigInt
+  id_sede         BigInt
+  id_rol_cliente  BigInt
+  fecha_inicio    DateTime?      @default(dbgenerated("CURRENT_DATE")) @db.Date
+  fecha_fin       DateTime?      @db.Date
+  observaciones   String?
+  estado          Boolean?       @default(true)
+  created_at      DateTime?      @default(now()) @db.Timestamptz(6)
+  clientes        clientes       @relation(fields: [id_cliente], references: [id_cliente], onDelete: Cascade, onUpdate: NoAction)
+  roles_clientes  roles_clientes @relation(fields: [id_rol_cliente], references: [id_rol_cliente], onDelete: NoAction, onUpdate: NoAction)
+  sedes           sedes          @relation(fields: [id_sede], references: [id_sede], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([id_cliente, id_sede, id_rol_cliente], map: "uq_cliente_sede_rol")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model clientes {
+  id_cliente       BigInt             @id @default(autoincrement())
+  nombre           String
+  documento        String?
+  telefono         String?
+  email            String?
+  direccion        String?
+  estado           Boolean?           @default(true)
+  created_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  cliente_sede     cliente_sede[]
+  puesto_secciones puesto_secciones[]
+  puestos          puestos[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model mercados {
+  id_mercado    BigInt    @id @default(autoincrement())
+  id_sede       BigInt
+  nombre        String
+  direccion     String?
+  observaciones String?
+  estado        Boolean?  @default(true)
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  sedes         sedes     @relation(fields: [id_sede], references: [id_sede], onDelete: Cascade, onUpdate: NoAction)
+  puestos       puestos[]
+
+  @@unique([id_sede, nombre], map: "uq_mercado_sede")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model puesto_secciones {
+  id_seccion     BigInt    @id @default(autoincrement())
+  id_puesto      BigInt
+  id_cliente     BigInt?
+  codigo_seccion String
+  descripcion    String?
+  observaciones  String?
+  estado         Boolean?  @default(true)
+  created_at     DateTime? @default(now()) @db.Timestamptz(6)
+  clientes       clientes? @relation(fields: [id_cliente], references: [id_cliente], onUpdate: NoAction)
+  puestos        puestos   @relation(fields: [id_puesto], references: [id_puesto], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([id_puesto, codigo_seccion], map: "uq_seccion_puesto")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model puestos {
+  id_puesto        BigInt             @id @default(autoincrement())
+  id_mercado       BigInt
+  id_cliente       BigInt?
+  numero_puesto    String
+  referencia       String?
+  es_principal     Boolean?           @default(false)
+  estado           Boolean?           @default(true)
+  created_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  puesto_secciones puesto_secciones[]
+  clientes         clientes?          @relation(fields: [id_cliente], references: [id_cliente], onUpdate: NoAction)
+  mercados         mercados           @relation(fields: [id_mercado], references: [id_mercado], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([id_mercado, numero_puesto], map: "uq_puesto_mercado")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model roles_clientes {
+  id_rol_cliente BigInt         @id @default(autoincrement())
+  nombre         String         @unique
+  descripcion    String?
+  estado         Boolean?       @default(true)
+  created_at     DateTime?      @default(now()) @db.Timestamptz(6)
+  cliente_sede   cliente_sede[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model roles_usuarios {
+  id_rol_usuario BigInt     @id @default(autoincrement())
+  nombre         String     @unique
+  descripcion    String?
+  estado         Boolean?   @default(true)
+  created_at     DateTime?  @default(now()) @db.Timestamptz(6)
+  usuarios       usuarios[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sedes {
+  id_sede      BigInt         @id @default(autoincrement())
+  nombre       String
+  tipo_sede    String?
+  direccion    String?
+  ciudad       String?
+  departamento String?
+  telefono     String?
+  estado       Boolean?       @default(true)
+  created_at   DateTime?      @default(now()) @db.Timestamptz(6)
+  cliente_sede cliente_sede[]
+  mercados     mercados[]
+  usuarios     usuarios[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model usuarios {
+  id_usuario     BigInt         @id @default(autoincrement())
+  id_sede        BigInt
+  id_rol_usuario BigInt
+  nombres        String
+  apellidos      String?
+  telefono       String?
+  email          String?        @unique
+  password_hash  String?
+  estado         Boolean?       @default(true)
+  created_at     DateTime?      @default(now()) @db.Timestamptz(6)
+  roles_usuarios roles_usuarios @relation(fields: [id_rol_usuario], references: [id_rol_usuario], onDelete: NoAction, onUpdate: NoAction)
+  sedes          sedes          @relation(fields: [id_sede], references: [id_sede], onDelete: NoAction, onUpdate: NoAction)
+}
