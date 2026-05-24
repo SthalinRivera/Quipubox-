@@ -1,15 +1,47 @@
-import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { UsersModule } from './usuarios/users.module';
-import { AuthModule } from './auth/auth.module';
-import { SedesModule } from './sedes/sedes.module';
+import { Module } from '@nestjs/common'
+import { EvidenciasModule } from './evidencias/evidencias.module';
+
+import { ConfigModule }
+  from '@nestjs/config'
+
+import { AppController }
+  from './app.controller'
+
+import { AppService }
+  from './app.service'
+
+import { UsersModule }
+  from './usuarios/users.module'
+
+import { AuthModule }
+  from './auth/auth.module'
+
+
 
 
 
 @Module({
-  imports: [UsersModule, AuthModule, SedesModule],
-  controllers: [AppController],
-  providers: [AppService],
+
+  imports: [
+
+    ConfigModule.forRoot({
+
+      isGlobal: true,
+
+    }),
+
+    UsersModule,
+    EvidenciasModule,
+    AuthModule,
+
+  ],
+
+  controllers: [
+    AppController,
+  ],
+
+  providers: [
+    AppService,
+  ],
 })
 export class AppModule { }

@@ -1,23 +1,48 @@
-import { ExtractJwt, Strategy } from 'passport-jwt';
+import { Injectable, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { Injectable } from '@nestjs/common';
+import { ExtractJwt, Strategy } from 'passport-jwt';
+import * as jwksRsa from 'jwks-rsa';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
+    private readonly logger = new Logger(JwtStrategy.name);
+
     constructor(private configService: ConfigService) {
-        const secret = configService.get<string>('JWT_SECRET');
-        if (!secret) {
-            throw new Error('JWT_SECRET no está definido en el archivo .env');
+        const supabaseUrl = configService.get<string>('SUPABASE_URL');
+        if (!supabaseUrl) {
+            throw new Error('Falta SUPABASE_URL en .env');
         }
+        const jwksUri = `${supabaseUrl}/auth/v1/.well-known/jwks.json`;
+
+        // IMPORTANTE: ESTOS LOGS NO USAN 'this', pueden ir antes de super()
+        console.log('🔍 Supabase URL:', supabaseUrl);
+        console.log('🔍 JWKS URI:', jwksUri);
+
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
-            secretOrKey: secret,
+            algorithms: ['ES256'], // ← CLAVE: Volver a ES256
+            secretOrKeyProvider: jwksRsa.passportJwtSecret({
+                cache: true,
+                rateLimit: true,
+                jwksUri: jwksUri,
+            }),
         });
+
+        // Estos logs ya pueden usar 'this'
+        this.logger.log('✅ Estrategia JWT inicializada con ES256');
     }
 
     async validate(payload: any) {
-        return { userId: payload.sub, email: payload.email };
+        this.logger.debug('📦 Payload JWT recibido:', payload);
+        return {
+            user: {
+                id: payload.sub,
+                email: payload.email,
+                user_metadata: payload.user_metadata || {},
+                app_metadata: payload.app_metadata || {},
+            }
+        };
     }
 }
