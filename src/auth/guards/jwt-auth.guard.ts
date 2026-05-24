@@ -4,9 +4,7 @@ import {
     Injectable,
     UnauthorizedException,
 } from '@nestjs/common';
-
 import { ConfigService } from '@nestjs/config';
-import { jwtVerify, createRemoteJWKSet } from 'jose';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -14,22 +12,21 @@ export class JwtAuthGuard implements CanActivate {
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const request = context.switchToHttp().getRequest();
-
         const authHeader = request.headers.authorization;
-
         if (!authHeader) {
             throw new UnauthorizedException('No token');
         }
-
         const token = authHeader.replace('Bearer ', '');
-
         const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
 
-        const JWKS = createRemoteJWKSet(
+        // ✅ Importación dinámica (ESM)
+        const jose = await import('jose');
+
+        const JWKS = jose.createRemoteJWKSet(
             new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`)
         );
 
-        const { payload } = await jwtVerify(token, JWKS, {
+        const { payload } = await jose.jwtVerify(token, JWKS, {
             algorithms: ['ES256'],
         });
 
@@ -39,7 +36,6 @@ export class JwtAuthGuard implements CanActivate {
             user_metadata: payload.user_metadata,
             app_metadata: payload.app_metadata,
         };
-
         return true;
     }
 }
