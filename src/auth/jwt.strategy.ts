@@ -1,36 +1,35 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly logger = new Logger(JwtStrategy.name);
 
-    constructor(private configService: ConfigService) {
+    constructor(configService: ConfigService) {
+        const jwtSecret = configService.get<string>('SUPABASE_JWT_SECRET');
 
-        const supabaseJwtSecret = configService.get<string>('SUPABASE_JWT_SECRET');
-
-        if (!supabaseJwtSecret) {
+        if (!jwtSecret) {
             throw new Error('Falta SUPABASE_JWT_SECRET en .env');
         }
 
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
-            secretOrKey: supabaseJwtSecret,
-            algorithms: ['HS256'], // Supabase usa HS256 para validación interna
+            secretOrKey: jwtSecret, // 👈 SIMPLE, SIN JWKS
         });
 
-        this.logger.log('✅ JWT Strategy lista (sin jwks-rsa)');
+        this.logger.log('✅ JWT Strategy con secret configurado');
     }
 
     async validate(payload: any) {
         return {
-            id: payload.sub,
-            email: payload.email,
-            user_metadata: payload.user_metadata,
+            user: {
+                id: payload.sub,
+                email: payload.email,
+                role: payload.role,
+            },
         };
     }
 }
