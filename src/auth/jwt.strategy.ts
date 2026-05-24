@@ -1,35 +1,41 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
+import { Strategy } from 'passport-custom';
 import { ConfigService } from '@nestjs/config';
+import { jwtVerify, createRemoteJWKSet } from 'jose';
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
+export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     private readonly logger = new Logger(JwtStrategy.name);
 
-    constructor(configService: ConfigService) {
-        const jwtSecret = configService.get<string>('SUPABASE_JWT_SECRET');
-
-        if (!jwtSecret) {
-            throw new Error('Falta SUPABASE_JWT_SECRET en .env');
-        }
-
-        super({
-            jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-            ignoreExpiration: false,
-            secretOrKey: jwtSecret, // 👈 SIMPLE, SIN JWKS
-        });
-
-        this.logger.log('✅ JWT Strategy con secret configurado');
+    constructor(private configService: ConfigService) {
+        super();
     }
 
-    async validate(payload: any) {
+    async validate(req: Request) {
+        const authHeader = req.headers['authorization'];
+
+        if (!authHeader) {
+            throw new Error('No token');
+        }
+
+        const token = authHeader.replace('Bearer ', '');
+
+        const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
+
+        const JWKS = createRemoteJWKSet(
+            new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`)
+        );
+
+        const { payload } = await jwtVerify(token, JWKS, {
+            algorithms: ['ES256'],
+        });
+
         return {
-            user: {
-                id: payload.sub,
-                email: payload.email,
-                role: payload.role,
-            },
+            id: payload.sub,
+            email: payload.email,
+            user_metadata: payload.user_metadata,
+            app_metadata: payload.app_metadata,
         };
     }
 }
