@@ -1,16 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PassportStrategy } from '@nestjs/passport';
-import { Strategy } from 'passport-custom';
 import { ConfigService } from '@nestjs/config';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
+export class JwtStrategy {
     private readonly logger = new Logger(JwtStrategy.name);
 
-    constructor(private configService: ConfigService) {
-        super();
-    }
+    constructor(private configService: ConfigService) { }
 
     async validate(req: Request) {
         const authHeader = req.headers['authorization'];

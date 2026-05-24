@@ -1,21 +1,45 @@
-import { Injectable, ExecutionContext, UnauthorizedException, Logger } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import {
+    CanActivate,
+    ExecutionContext,
+    Injectable,
+    UnauthorizedException,
+} from '@nestjs/common';
+
+import { ConfigService } from '@nestjs/config';
+import { jwtVerify, createRemoteJWKSet } from 'jose';
 
 @Injectable()
-export class JwtAuthGuard extends AuthGuard('jwt') {
-    private readonly logger = new Logger(JwtAuthGuard.name);
+export class JwtAuthGuard implements CanActivate {
+    constructor(private configService: ConfigService) { }
 
-    canActivate(context: ExecutionContext) {
+    async canActivate(context: ExecutionContext): Promise<boolean> {
         const request = context.switchToHttp().getRequest();
-        this.logger.debug(`Request URL: ${request.url}`);
-        return super.canActivate(context);
-    }
 
-    handleRequest(err, user, info) {
-        if (err || !user) {
-            this.logger.error(`Auth error: ${err?.message}, info: ${info?.message}`);
-            throw err || new UnauthorizedException();
+        const authHeader = request.headers.authorization;
+
+        if (!authHeader) {
+            throw new UnauthorizedException('No token');
         }
-        return user;
+
+        const token = authHeader.replace('Bearer ', '');
+
+        const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
+
+        const JWKS = createRemoteJWKSet(
+            new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`)
+        );
+
+        const { payload } = await jwtVerify(token, JWKS, {
+            algorithms: ['ES256'],
+        });
+
+        request.user = {
+            id: payload.sub,
+            email: payload.email,
+            user_metadata: payload.user_metadata,
+            app_metadata: payload.app_metadata,
+        };
+
+        return true;
     }
 }
