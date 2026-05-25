@@ -34,13 +34,8 @@ export class AuthService {
     async getProfile(authPayload: any) {
         try {
             console.log('1️⃣ Inicio getProfile');
-            console.log('AUTH PAYLOAD:', authPayload);
-            const user = authPayload;
-
-            if (!user?.email) {
-                throw new UnauthorizedException('Usuario no encontrado cd');
-            }
-
+            const { user } = authPayload;
+            if (!user) throw new UnauthorizedException('Usuario no encontrado');
             console.log('2️⃣ User extraído:', user.email);
 
             const email = user.email;

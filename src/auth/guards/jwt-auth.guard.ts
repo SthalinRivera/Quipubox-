@@ -5,7 +5,7 @@ import {
     UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-
+import { jwtVerify, createRemoteJWKSet } from 'jose';
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
     constructor(private configService: ConfigService) { }
@@ -25,7 +25,6 @@ export class JwtAuthGuard implements CanActivate {
         const JWKS = jose.createRemoteJWKSet(
             new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`)
         );
-
         const { payload } = await jose.jwtVerify(token, JWKS, {
             algorithms: ['ES256'],
         });

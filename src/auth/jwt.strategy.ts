@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { jwtVerify, createRemoteJWKSet } from 'jose';
 
 @Injectable()
 export class JwtStrategy {
@@ -9,8 +8,10 @@ export class JwtStrategy {
     constructor(private configService: ConfigService) { }
 
     async validate(req: Request) {
-        const authHeader = req.headers['authorization'];
+        // 1. Importación dinámica de 'jose' (solo lo que necesitas)
+        const { jwtVerify, createRemoteJWKSet } = await import('jose');
 
+        const authHeader = req.headers['authorization'];
         if (!authHeader) {
             throw new Error('No token');
         }
@@ -18,7 +19,6 @@ export class JwtStrategy {
         const token = authHeader.replace('Bearer ', '');
 
         const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
-
         const JWKS = createRemoteJWKSet(
             new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`)
         );
