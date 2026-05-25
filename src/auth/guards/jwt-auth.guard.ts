@@ -1,40 +1,35 @@
-import {
-    CanActivate,
-    ExecutionContext,
-    Injectable,
-    UnauthorizedException,
-} from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { jwtVerify, createRemoteJWKSet } from 'jose';
+import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { createClient } from '@supabase/supabase-js';
+
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-    constructor(private configService: ConfigService) { }
-
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const request = context.switchToHttp().getRequest();
-        const authHeader = request.headers.authorization;
+        const authHeader = request.headers['authorization'];
+
         if (!authHeader) {
-            throw new UnauthorizedException('No token');
+            throw new UnauthorizedException('No token provided');
         }
+
         const token = authHeader.replace('Bearer ', '');
-        const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
 
-        // ✅ Importación dinámica (ESM)
-        const jose = await import('jose');
+        // Usa las mismas variables de entorno que ya tienes
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
-        const JWKS = jose.createRemoteJWKSet(
-            new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`)
-        );
-        const { payload } = await jose.jwtVerify(token, JWKS, {
-            algorithms: ['ES256'],
-        });
+        if (!supabaseUrl || !supabaseKey) {
+            throw new Error('Missing Supabase credentials');
+        }
 
-        request.user = {
-            id: payload.sub,
-            email: payload.email,
-            user_metadata: payload.user_metadata,
-            app_metadata: payload.app_metadata,
-        };
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        const { data: { user }, error } = await supabase.auth.getUser(token);
+
+        if (error || !user) {
+            throw new UnauthorizedException('Invalid token');
+        }
+
+        // Opcional: guarda el usuario en la request para usarlo después
+        request.user = user;
         return true;
     }
 }
