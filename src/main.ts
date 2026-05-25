@@ -21,7 +21,7 @@ async function bootstrapServerless() {
   return serverless(app.getHttpAdapter().getInstance());
 }
 
-export const handler = async (event: any, context: any) => {
+export const handler = async (event: any, context: any) => {  // ← paréntesis normal
   if (!cachedServer) {
     cachedServer = await bootstrapServerless();
   }
@@ -35,7 +35,7 @@ if (process.env.NODE_ENV !== 'production') {
     const configService = app.get(ConfigService);
     const port = configService.get<number>('PORT', 4000);
     await app.listen(port);
-    Logger.log(`Local server running on http://localhost:${port}`);
+    Logger.log(`Local server running on http://localhost:${port}`);  // ← backticks
   }
   local();
 }
